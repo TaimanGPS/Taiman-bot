@@ -21,14 +21,14 @@ MODEL = "openai/gpt-4o-mini"
 LOADING_STICKER = "CAACAgIAAxkBAAFHyaNp6GFKMFnsIuNHsh_neEr8XnxxvQACeZwAAoEXQUtx7n3bdzfIXjsE"
 
 # ================= SYSTEM PROMPT =================
-system_prompt = """
+SYSTEM_PROMPT = """
 Sen kuchli AI assistantsan (JARVIS style).
 Har doim O‘zbek tilida javob ber.
 Aniq, qisqa va tushunarli yoz.
 Keraksiz gap qilma.
 """
 
-# ================= AI FUNCTION =================
+# ================= AI =================
 def get_ai(text):
     url = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -40,7 +40,7 @@ def get_ai(text):
     data = {
         "model": MODEL,
         "messages": [
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": text}
         ],
         "temperature": 0.6
@@ -50,21 +50,18 @@ def get_ai(text):
         r = requests.post(url, json=data, headers=headers, timeout=30)
         res = r.json()
 
-        if "choices" in res:
-            return res["choices"][0]["message"]["content"]
-        else:
-            return f"❌ API xatolik: {res}"
+        return res["choices"][0]["message"]["content"]
 
     except Exception as e:
-        return f"❌ Internet/API xatolik: {e}"
+        return f"❌ Xatolik: {e}"
 
 # ================= ANIMATION =================
 async def animate(update: Update, text: str):
     msg = await update.message.reply_text("✍️ yozilmoqda...")
 
     out = ""
-    for i, w in enumerate(text.split(" ")):
-        out += w + " "
+    for i, word in enumerate(text.split(" ")):
+        out += word + " "
 
         if i % 3 == 0:
             await msg.edit_text(out)
@@ -80,19 +77,15 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         action="typing"
     )
 
-    # sticker
     sticker = await update.message.reply_sticker(LOADING_STICKER)
 
-    # AI response
     response = get_ai(update.message.text)
 
-    # remove sticker
     try:
         await sticker.delete()
     except:
         pass
 
-    # animated reply
     await animate(update, response)
 
 # ================= START =================
@@ -112,7 +105,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
 
     print("🤖 Bot ishga tushdi...")
-    app.run_polling(drop_pending_updates=True)
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
