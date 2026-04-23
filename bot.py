@@ -1,15 +1,17 @@
 import os
 import requests
 import asyncio
-from dotenv import load_dotenv
 
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    ContextTypes
+)
 
 # ================= ENV =================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(os.path.join(BASE_DIR, ".env"))
-
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
@@ -46,24 +48,39 @@ def get_ai(text):
 
     try:
         r = requests.post(url, json=data, headers=headers, timeout=30)
-        return r.json()["choices"][0]["message"]["content"]
-    except:
-        return "❌ API yoki internet xatolik"
+        res = r.json()
+
+        if "choices" in res:
+            return res["choices"][0]["message"]["content"]
+        else:
+            return f"❌ API xatolik: {res}"
+
+    except Exception as e:
+        return f"❌ Internet/API xatolik: {e}"
 
 # ================= ANIMATION =================
 async def animate(update: Update, text: str):
     msg = await update.message.reply_text("✍️ yozilmoqda...")
 
     out = ""
-    for w in text.split(" "):
+    for i, w in enumerate(text.split(" ")):
         out += w + " "
-        await msg.edit_text(out)
-        await asyncio.sleep(0.1)
 
-# ================= HANDLER =================
+        if i % 3 == 0:
+            await msg.edit_text(out)
+            await asyncio.sleep(0.05)
+
+    await msg.edit_text(out)
+
+# ================= HANDLERS =================
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    # loading sticker
+    await context.bot.send_chat_action(
+        chat_id=update.effective_chat.id,
+        action="typing"
+    )
+
+    # sticker
     sticker = await update.message.reply_sticker(LOADING_STICKER)
 
     # AI response
@@ -80,12 +97,13 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ================= START =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Taiman  AI tayyor!")
+    await update.message.reply_text("🤖 Taiman AI tayyor!")
 
 # ================= MAIN =================
 def main():
+
     if not TELEGRAM_TOKEN:
-        print("❌ TELEGRAM_TOKEN topilmadi (.env tekshir)")
+        print("❌ TELEGRAM_TOKEN yo‘q (Railway Variables tekshir)")
         return
 
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
